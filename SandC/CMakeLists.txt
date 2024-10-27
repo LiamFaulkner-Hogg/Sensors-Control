@@ -5,7 +5,11 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
+# Add pkg-config support
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZBAR REQUIRED IMPORTED_TARGET zbar)
+
+# find other dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -13,22 +17,41 @@ find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(camera_info_manager REQUIRED)
+find_package(std_msgs REQUIRED)  # Add this for String messages
 
 add_executable(gopro_publisher src/gopro_publisher.cpp)
-ament_target_dependencies(gopro_publisher rclcpp sensor_msgs cv_bridge image_transport OpenCV camera_info_manager)
 
+target_link_libraries(gopro_publisher
+  ${OpenCV_LIBS}
+  PkgConfig::ZBAR
+)
+
+ament_target_dependencies(gopro_publisher 
+  rclcpp 
+  sensor_msgs 
+  cv_bridge 
+  image_transport 
+  OpenCV 
+  camera_info_manager
+  std_msgs    # Add this
+)
+
+# Install C++ node
 install(TARGETS
   gopro_publisher
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install Python scripts
+install(
+  PROGRAMS
+    scripts/visual_controller.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
