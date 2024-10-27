@@ -1,0 +1,10 @@
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/uninstall.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/SandC_uninstall.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/gopro_publisher.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/test.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/edit_cache.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/rebuild_cache.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/list_install_components.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/install.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/install/local.dir
+/home/student/ros2_ws/src/Sensors-Control/build/CMakeFiles/install/strip.dir
