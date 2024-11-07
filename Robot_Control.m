@@ -1,10 +1,31 @@
 % Combined Visual Servoing and Robot Joint Control Code with Position Control
 
 %% Initialise ROS
+robot = UR3();
+
 rosinit('192.168.27.1'); % Initialize ROS connection
 
 %% Create Subscribers and Services
 jointStateSubscriber = rossubscriber('/ur/joint_states', 'sensor_msgs/JointState');
+
+%%
+%currentJointState_321456 = (jointStateSubscriber.LatestMessage.Position)'; % Note the default order of the joints is 3,2,1,4,5,6
+%currentJointState_123456 = [currentJointState_321456(3:-1:1),currentJointState_321456(4:6)];
+
+% jointStateSubscriber.LatestMessage   - bugfix
+
+jointNames = {'shoulder_pan_joint','shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'};
+
+
+%% Init joint trajectory time
+
+[client, goal] = rosactionclient('/ur/scaled_pos_joint_traj_controller/follow_joint_trajectory');
+goal.Trajectory.JointNames = jointNames;
+goal.Trajectory.Header.Seq = 1;
+goal.Trajectory.Header.Stamp = rostime('Now','system');
+goal.GoalTimeTolerance = rosduration(0.25);
+bufferSeconds = 2; % This allows for the time taken to send the message. If the network is fast, this could be reduced.
+durationSeconds = 0.1; % This is how many seconds the movement will take
 
 %% Load Target Image
 img_target = imread("target1.jpg"); % Load the target image
@@ -13,13 +34,12 @@ TargetPts = detectSURFFeatures(img_target).selectStrongest(100);
 [features1, validPoints1] = extractFeatures(img_target, TargetPts);
 
 %% Initialize USB Webcam
-cam = webcam('Logi C270 HD WebCam'); % Connect to the USB webcam
+cam = webcam('C270 HD WEBCAM'); % Connect to the USB webcam
 
 %% Define Control Parameters
 Lambda = 0.1; % Gain for control
 f = 400; % Focal length
 p = 400; % Principal point
-durationSeconds = 5; % Duration for each movement
 
 %% Main Loop
 for i = 1:1000 % Limit to 1000 iterations to avoid infinite loop
@@ -51,30 +71,52 @@ for i = 1:1000 % Limit to 1000 iterations to avoid infinite loop
         de = -e * Lambda;
 
         Lx2 = inv(Lx' * Lx) * Lx'; % Pseudo-inverse of Jacobian
-        Vc = -Lambda * Lx2 * e; % Control velocity
+        Vc = -Lambda * Lx2 * de; % Control velocity
 
-        %% Convert Velocity Command to Position Command
-        currentJointState = jointStateSubscriber.LatestMessage.Position; % Current joint state
-        deltaTheta = Vc * durationSeconds; % Convert velocity to position change
-        targetJointState = currentJointState + deltaTheta; % Calculate target joint position
-
+        % for i = 1:length(Vc)
+        %     if Vc(i) > 0.1
+        %         Vc(i) = 0.1;
+        %     end
+        % 
+        %     if Vc(i) < -0.1
+        %         Vc(i) = -0.1;
+        %     end 
+        % end
+        
         %% Send Position Command to the Robot
-        [client, goal] = rosactionclient('/ur/scaled_pos_joint_traj_controller/follow_joint_trajectory');
-        jointNames = {'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'};
 
-        % Define trajectory to reach the target position
-        goal.Trajectory.JointNames = jointNames;
-        goal.Trajectory.Header.Stamp = rostime('Now', 'system');
-        goal.Trajectory.Points = rosmessage('trajectory_msgs/JointTrajectoryPoint');
-        goal.Trajectory.Points.Positions = targetJointState; % Set the target position
-        goal.Trajectory.Points.Velocities = zeros(1,7); % Set the target position
-        goal.Trajectory.Points.TimeFromStart = rosduration(durationSeconds); % Set movement duration
+        currentJointState_321456 = (jointStateSubscriber.LatestMessage.Position)'; % Note the default order of the joints is 3,2,1,4,5,6
+        currentJointState_123456 = [currentJointState_321456(3:-1:1),currentJointState_321456(4:6)];
 
-        % Send the position goal to the robot
-        sendGoal(client, goal);
+        
+        JCurrent = robot.model.jacob0(currentJointState_123456);
+        jointVelocities = pinv(JCurrent) * Vc;
+        next_joint_angles = currentJointState_123456;
+        next_joint_angles = next_joint_angles + jointVelocities * durationSeconds;
 
-        % Pause for movement execution
-        pause(durationSeconds + 1); % Wait until movement completes
+
+
+
+        startJointSend = rosmessage('trajectory_msgs/JointTrajectoryPoint');
+        startJointSend.Positions = currentJointState_123456; % Define the start pose as the current pose
+        startJointSend.TimeFromStart = rosduration(0);     
+              
+        endJointSend = rosmessage('trajectory_msgs/JointTrajectoryPoint');
+        
+        % Edit this line to select the destination pose
+        nextJointState_123456 = next_joint_angles; % Define end pose as configuration of joint values
+        
+        endJointSend.Positions = nextJointState_123456;
+        endJointSend.TimeFromStart = rosduration(durationSeconds);
+        
+        
+        goal.Trajectory.Points = [startJointSend; endJointSend];
+        goal.Trajectory.Header.Stamp = jointStateSubscriber.LatestMessage.Header.Stamp + rosduration(bufferSeconds);
+        cancelGoal(client);
+        sendGoal(client,goal);
+        pause(7);
+        %Pause is important - this gives time for the robot to execute the previous move command. No pause will cause the robot to 'spasm'
+        pause(durationSeconds); 
         
     catch ME
         fprintf('Error capturing frame %d: %s\n', i, ME.message);
