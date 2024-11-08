@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>SandC</name>
+  <name>final_project</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="liam.faulknerhogg@student.uts.edu.au">student</maintainer>
@@ -16,10 +16,16 @@
   <depend>camera_info_manager</depend>
   <depend>zbar</depend>
   
-  <!-- Add Python dependencies -->
+  <!-- Python dependencies -->
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
+
+  <!-- Add MoveIt dependencies -->
+  <depend>moveit_commander</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning</depend>
+  <depend>moveit_ros_planning_interface</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <test_depend>ament_lint_auto</test_depend>
